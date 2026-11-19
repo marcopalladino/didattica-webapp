@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passaggi di Stato dell'Acqua & Curva di Riscaldamento | Laboratorio di Fisica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        ice: '#38bdf8',
+                        melting: '#2dd4bf',
+                        liquid: '#2563eb',
+                        boiling: '#f59e0b',
+                        vapor: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Stili personalizzati per slider termico e canvas */
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        input[type="range"].thermal-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #38bdf8 0%, #2dd4bf 1.5%, #2563eb 12%, #f59e0b 26%, #ef4444 98%);
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"].thermal-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #0f172a;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            cursor: grab;
+            transition: transform 0.15s ease;
+        }
+        input[type="range"].thermal-slider::-webkit-slider-thumb:active {
+            cursor: grabbing;
+            transform: scale(1.15);
+        }
+        input[type="range"].thermal-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #0f172a;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            cursor: grab;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- Header Didattico -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-md">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Passaggi di Stato & Curva di Riscaldamento</h1>
+                        <span class="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            Fisica • 1° Biennio Liceo Scientifico
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-500">Simulazione termo-molecolare per <strong class="text-slate-700">m = 1,00 kg</strong> di acqua pura (P = 1 atm)</p>
+                </div>
+            </div>
+
+            <!-- Telemetria rapida in header -->
+            <div class="flex items-center gap-3 sm:gap-5 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
+                <div>
+                    <span class="block text-[10px] uppercase tracking-wider font-semibold text-slate-400">Calore Scambiato (Q)</span>
+                    <span id="header-q" class="font-mono font-bold text-sm sm:text-base text-slate-800">0.0 kJ</span>
+                </div>
+                <div class="h-7 w-px bg-slate-200"></div>
+                <div>
+                    <span class="block text-[10px] uppercase tracking-wider font-semibold text-slate-400">Temperatura (T)</span>
+                    <span id="header-t" class="font-mono font-bold text-sm sm:text-base text-blue-600">-20.0 °C</span>
+                </div>
+                <div class="h-7 w-px bg-slate-200 hidden sm:block"></div>
+                <div class="hidden sm:block">
+                    <span class="block text-[10px] uppercase tracking-wider font-semibold text-slate-400">Stato di Aggregazione</span>
+                    <span id="header-phase-badge" class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-100 text-sky-800">
+                        Solido (Ghiaccio)
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
+
+        <!-- Barra Controlli Principali -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <!-- Controlli Riproduzione & Direzione Termica -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button id="btn-play" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition active:scale-95">
+                        <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                        <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/></svg>
+                        <span id="btn-play-text">Avvia Simulazione</span>
+                    </button>
+
+                    <!-- Toggle Riscaldamento vs Raffreddamento -->
+                    <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                        <button id="mode-heat" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white text-orange-600 shadow-sm transition flex items-center gap-1.5">
+                            <span>🔥 Riscalda (+Q)</span>
+                        </button>
+                        <button id="mode-cool" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+                            <span>❄️ Raffredda (-Q)</span>
+                        </button>
+                    </div>
+
+                    <button id="btn-reset" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-medium text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
+                <!-- Selettori Rapidi Fasi -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Vai a:</span>
+                    <button data-target-q="20" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 transition">1. Ghiaccio</button>
+                    <button data-target-q="208.8" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 transition">2. Fusione (0°C)</button>
+                    <button data-target-q="585" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition">3. Acqua Liquida</button>
+                    <button data-target-q="1924.4" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition">4. Ebollizione (100°C)</button>
+                    <button data-target-q="3075" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition">5. Vapore</button>
+                </div>
+            </div>
+
+            <!-- Slider Continuo del Calore Q -->
+            <div class="pt-4">
+                <div class="flex justify-between items-center mb-2">
+                    <label for="q-slider" class="text-xs sm:text-sm font-semibold text-slate-700">
+                        Energia Termica Totale Fornita <span class="font-mono text-blue-600">Q</span> (a potenza costante P)
+                    </label>
+                    <span class="text-xs font-mono text-slate-500">0 kJ → 3095 kJ</span>
+                </div>
+                <input id="q-slider" type="range" min="0" max="3095" step="0.5" value="0" class="w-full thermal-slider">
+                <div class="grid grid-cols-5 text-[10px] sm:text-xs text-slate-400 font-medium mt-1.5">
+                    <span class="text-left">0 kJ (-20°C)</span>
+                    <span class="text-center text-teal-600">41.8 - 375.8 kJ (Fusione)</span>
+                    <span class="text-center text-blue-600">375.8 - 794.4 kJ (Liquido)</span>
+                    <span class="text-center text-amber-600">794.4 - 3054.4 kJ (Ebollizione)</span>
+                    <span class="text-right text-red-600">3095 kJ (120°C)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Split Screen Principale: Simulazione Micro/Macro + Grafico Curva di Riscaldamento -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Pannello Sinistro (5 colonne su desktop): Cilindro Molecolare & Bilancio Energetico -->
+            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Modello Microscopico & Cilindro</h2>
+                            <p class="text-xs text-slate-500">Comportamento delle molecole H₂O e volume occupato</p>
+                        </div>
+                        <span id="phase-fraction-pill" class="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-700">
+                            100% Solido
+                        </span>
+                    </div>
+
+                    <!-- Canvas Simulazione Particellare + Termometro + Pistone -->
+                    <div class="canvas-container rounded-xl border border-slate-200 bg-slate-50 h-[340px] sm:h-[370px]">
+                        <canvas id="sim-canvas" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+                <!-- Indicatori Visivi del Bilancio Energetico (Ec vs Ep) -->
+                <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Ripartizione dell'Energia Assorbita</span>
+                        <span id="energy-mode-badge" class="text-xs font-semibold text-blue-600">Aumento Energia Cinetica</span>
+                    </div>
+
+                    <!-- Barra Energia Cinetica Media -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="font-medium text-slate-700 flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span>
+                                Energia Cinetica Media (E<sub>c</sub>) → <em class="text-slate-500">Temperatura</em>
+                            </span>
+                            <span id="ec-percent" class="font-mono font-semibold text-slate-700">0%</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                            <div id="ec-bar" class="h-full bg-gradient-to-r from-sky-400 via-amber-500 to-red-500 transition-all duration-75" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Barra Energia Potenziale / Legami -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="font-medium text-slate-700 flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
+                                Energia Potenziale Legami (E<sub>p</sub>) → <em class="text-slate-500">Calore Latente</em>
+                            </span>
+                            <span id="ep-percent" class="font-mono font-semibold text-slate-700">0%</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                            <div id="ep-bar" class="h-full bg-gradient-to-r from-teal-400 to-emerald-600 transition-all duration-75" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pannello Destro (7 colonne su desktop): Grafico Curva di Riscaldamento Interattiva -->
+            <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Curva di Riscaldamento dell'Acqua (T vs Q)</h2>
+                            <p class="text-xs text-slate-500">Clicca o trascina sul grafico per esplorare ogni singolo punto della trasformazione</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg border border-blue-100">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                            <span>Grafico Interattivo</span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Grafico T vs Q -->
+                    <div class="canvas-container rounded-xl border border-slate-200 bg-white h-[340px] sm:h-[370px] cursor-crosshair">
+                        <canvas id="graph-canvas" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+                <!-- Legenda dei 5 Tratti -->
+                <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                    <div class="flex items-center gap-1.5 p-1.5 rounded-lg bg-sky-50/70 border border-sky-100">
+                        <span class="w-3 h-3 rounded-sm bg-sky-400 shrink-0"></span>
+                        <div class="truncate">
+                            <div class="font-semibold text-slate-800 truncate">1. Ghiaccio</div>
+                            <div class="text-[10px] text-slate-500 font-mono">c<sub>s</sub>=2.09 kJ/kg·K</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 p-1.5 rounded-lg bg-teal-50/70 border border-teal-100">
+                        <span class="w-3 h-3 rounded-sm bg-teal-400 shrink-0"></span>
+                        <div class="truncate">
+                            <div class="font-semibold text-slate-800 truncate">2. Fusione</div>
+                            <div class="text-[10px] text-slate-500 font-mono">L<sub>f</sub>=334 kJ/kg</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 p-1.5 rounded-lg bg-blue-50/70 border border-blue-100">
+                        <span class="w-3 h-3 rounded-sm bg-blue-600 shrink-0"></span>
+                        <div class="truncate">
+                            <div class="font-semibold text-slate-800 truncate">3. Acqua Liq.</div>
+                            <div class="text-[10px] text-slate-500 font-mono">c<sub>l</sub>=4.186 kJ/kg·K</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 p-1.5 rounded-lg bg-amber-50/70 border border-amber-100">
+                        <span class="w-3 h-3 rounded-sm bg-amber-500 shrink-0"></span>
+                        <div class="truncate">
+                            <div class="font-semibold text-slate-800 truncate">4. Ebollizione</div>
+                            <div class="text-[10px] text-slate-500 font-mono">L<sub>v</sub>=2260 kJ/kg</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 p-1.5 rounded-lg bg-red-50/70 border border-red-100 col-span-2 sm:col-span-1">
+                        <span class="w-3 h-3 rounded-sm bg-red-500 shrink-0"></span>
+                        <div class="truncate">
+                            <div class="font-semibold text-slate-800 truncate">5. Vapore</div>
+                            <div class="text-[10px] text-slate-500 font-mono">c<sub>v</sub>=2.01 kJ/kg·K</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scheda Teorica Dinamica + Formule & Mini-Quiz -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Scheda Teorica Dinamica e Calcolo Istantaneo (7 colonne) -->
+            <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <span id="theory-step-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-100 text-sky-800">TRATTO 1</span>
+                            <h3 id="theory-title" class="text-base sm:text-lg font-bold text-slate-900">Riscaldamento del Ghiaccio (-20°C → 0°C)</h3>
+                        </div>
+                        <span id="theory-slope-tag" class="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">Pendenza: ΔT/Q elevata</span>
+                    </div>
+
+                    <!-- Spiegazione Microscopica e Macroscopica -->
+                    <p id="theory-desc" class="mt-3 text-sm text-slate-600 leading-relaxed">
+                        Fornendo calore al ghiaccio al di sotto di 0 °C, le molecole d'acqua assorbono energia ed aumentano l'ampiezza delle loro vibrazioni attorno alle posizioni fisse del reticolo cristallino esagonale. L'energia cinetica media cresce, quindi la temperatura sale proporzionalmente al calore ceduto.
+                    </p>
+
+                    <!-- Box Legge Fisica Applicata e Calcolo Numerico -->
+                    <div class="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Legge Fisica del Tratto</span>
+                            <div id="theory-formula" class="font-mono text-base sm:text-lg font-bold text-slate-900 bg-white px-3 py-2 rounded-lg border border-slate-200 inline-block shadow-2xs">
+                                Q = m · c<sub>s</sub> · ΔT
+                            </div>
+                            <p id="theory-law-name" class="text-xs text-slate-500 mt-1.5">Legge fondamentale della termologia</p>
+                        </div>
+
+                        <div class="bg-white p-3 rounded-lg border border-slate-200">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-blue-600 block mb-1">Calcolo Istantaneo (m = 1 kg)</span>
+                            <div id="theory-calc" class="font-mono text-xs sm:text-sm text-slate-800 leading-relaxed">
+                                ΔQ = 1 kg · 2,09 kJ/(kg·K) · 0.0 K = <strong>0.0 kJ</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nota Didattica Sosta Termica / Pendenza -->
+                <div class="mt-4 flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-blue-900">
+                    <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p id="theory-tip">
+                        <strong>Osserva la pendenza:</strong> Poiché il calore specifico del ghiaccio (2,09 kJ/kg·K) è circa la metà di quello dell'acqua liquida (4,186 kJ/kg·K), a parità di calore fornito la temperatura del ghiaccio sale circa due volte più velocemente!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Mini-Quiz Interattivo di Autovalutazione (5 colonne) -->
+            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">?</span>
+                            <h3 class="text-base font-bold text-slate-900">Verifica le tue conoscenze</h3>
+                        </div>
+                        <span id="quiz-progress" class="text-xs font-mono font-semibold text-slate-500">Domanda 1 / 4</span>
+                    </div>
+
+                    <div id="quiz-container" class="mt-3">
+                        <p id="quiz-question" class="text-sm font-semibold text-slate-800 leading-snug mb-3">
+                            Perché durante l'ebollizione dell'acqua (a 100 °C e 1 atm) la temperatura rimane costante anche continuando a fornire calore con il fornello?
+                        </p>
+                        <div id="quiz-options" class="space-y-2">
+                            <!-- Opzioni generate via JS -->
+                        </div>
+                        <div id="quiz-feedback" class="hidden mt-3 p-3 rounded-xl text-xs leading-relaxed"></div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span id="quiz-score" class="text-xs font-semibold text-slate-500">Punteggio: 0 / 4</span>
+                    <button id="quiz-next-btn" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                        Prossima Domanda →
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /**
+         * COSTANTI FISICHE DELL'ACQUA (per m = 1.00 kg, P = 1 atm)
+         */
+        const PHYSICS = {
+            m: 1.0,             // massa in kg
+            T_start: -20.0,     // °C
+            T_melt: 0.0,        // °C
+            T_boil: 100.0,      // °C
+            T_end: 120.0,       // °C
+            c_ice: 2.09,        // kJ/(kg·K)
+            L_f: 334.0,         // kJ/kg (calore latente di fusione)
+            c_water: 4.186,     // kJ/(kg·K)
+            L_v: 2260.0,        // kJ/kg (calore latente di vaporizzazione)
+            c_steam: 2.01       // kJ/(kg·K)
+        };
+
+        // Soglie cumulative di calore Q (in kJ)
+        const Q1 = PHYSICS.m * PHYSICS.c_ice * (PHYSICS.T_melt - PHYSICS.T_start); // 41.8 kJ
+        const Q2 = Q1 + PHYSICS.m * PHYSICS.L_f;                                  // 375.8 kJ
+        const Q3 = Q2 + PHYSICS.m * PHYSICS.c_water * (PHYSICS.T_boil - PHYSICS.T_melt); // 794.4 kJ
+        const Q4 = Q3 + PHYSICS.m * PHYSICS.L_v;                                  // 3054.4 kJ
+        const Q5 = Q4 + PHYSICS.m * PHYSICS.c_steam * (PHYSICS.T_end - PHYSICS.T_boil); // 3094.6 kJ (~3095)
+
+        /**
+         * STATO GLOBALE DELL'APPLICAZIONE
+         */
+        const state = {
+            Q: 0,                   // Calore attuale (kJ)
+            isPlaying: false,       // Simulazione automatica attiva
+            direction: 1,           // +1 riscaldamento, -1 raffreddamento
+            powerRate: 140,         // kJ al secondo (velocità simulazione)
+            lastTimestamp: 0,
+            isDraggingGraph: false
+        };
+
+        /**
+         * CALCOLO DELLO STATO TERMODINAMICO IN FUNZIONE DI Q
+         */
+        function getThermoState(Q) {
+            const clampedQ = Math.max(0, Math.min(Q5, Q));
+            let T = PHYSICS.T_start;
+            let phaseIndex = 1; // 1: Solido, 2: Fusione, 3: Liquido, 4: Ebollizione, 5: Vapore
+            let phaseProgress = 0; // 0..1 dentro il tratto corrente
+            let liquidFraction = 0; // 0 = tutto ghiaccio, 1 = tutto liquido
+            let gasFraction = 0;    // 0 = tutto liquido, 1 = tutto vapore
+
+            if (clampedQ <= Q1) {
+                phaseIndex = 1;
+                phaseProgress = clampedQ / Q1;
+                T = PHYSICS.T_start + (clampedQ / (PHYSICS.m * PHYSICS.c_ice));
+                liquidFraction = 0;
+                gasFraction = 0;
+            } else if (clampedQ <= Q2) {
+                phaseIndex = 2;
+                phaseProgress = (clampedQ - Q1) / (Q2 - Q1);
+                T = PHYSICS.T_melt;
+                liquidFraction = phaseProgress;
+                gasFraction = 0;
+            } else if (clampedQ <= Q3) {
+                phaseIndex = 3;
+                phaseProgress = (clampedQ - Q2) / (Q3 - Q2);
+                T = PHYSICS.T_melt + ((clampedQ - Q2) / (PHYSICS.m * PHYSICS.c_water));
+                liquidFraction = 1;
+                gasFraction = 0;
+            } else if (clampedQ <= Q4) {
+                phaseIndex = 4;
+                phaseProgress = (clampedQ - Q3) / (Q4 - Q3);
+                T = PHYSICS.T_boil;
+                liquidFraction = 1 - phaseProgress;
+                gasFraction = phaseProgress;
+            } else {
+                phaseIndex = 5;
+                phaseProgress = (clampedQ - Q4) / (Q5 - Q4);
+                T = PHYSICS.T_boil + ((clampedQ - Q4) / (PHYSICS.m * PHYSICS.c_steam));
+                liquidFraction = 0;
+                gasFraction = 1;
+            }
+
+            // Calcolo energia cinetica relativa (0..100%) e potenziale/legami (0..100%)
+            const totalSensibleQ = Q1 + (Q3 - Q2) + (Q5 - Q4);
+            const currentSensibleQ = Math.min(clampedQ, Q1)
+                + Math.max(0, Math.min(clampedQ, Q3) - Q2)
+                + Math.max(0, clampedQ - Q4);
+
+            const totalLatentQ = (Q2 - Q1) + (Q4 - Q3);
+            const currentLatentQ = Math.max(0, Math.min(clampedQ, Q2) - Q1)
+                + Math.max(0, Math.min(clampedQ, Q4) - Q3);
+
+            const ecPercent = Math.round((currentSensibleQ / totalSensibleQ) * 100);
+            const epPercent = Math.round((currentLatentQ / totalLatentQ) * 100);
+
+            return {
+                Q: clampedQ,
+                T,
+                phaseIndex,
+                phaseProgress,
+                liquidFraction,
+                gasFraction,
+                ecPercent,
+                epPercent
+            };
+        }
+
+        /**
+         * SISTEMA PARTICELLARE MOLECOLE H2O (Canvas 2D)
+         */
+        const NUM_MOLECULES = 48;
+        const molecules = [];
+
+        function initMolecules() {
+            molecules.length = 0;
+            const cols = 8;
+            const rows = 6;
+            for (let i = 0; i < NUM_MOLECULES; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                // Offset esagonale per reticolo cristallino del ghiaccio
+                const hexOffset = (row % 2 === 0) ? 0 : 0.5;
+                molecules.push({
+                    id: i,
+                    normX: (col + 0.75 + hexOffset * 0.6) / (cols + 0.8),
+                    normY: (row + 0.8) / (rows + 0.6),
+                    x: 0,
+                    y: 0,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    angle: Math.random() * Math.PI * 2,
+                    vAngle: (Math.random() - 0.5) * 0.08,
+                    phaseOffset: Math.random() * Math.PI * 2,
+                    // Soglia individuale per fusione o evaporazione progressiva
+                    meltThreshold: (i + 0.5) / NUM_MOLECULES,
+                    boilThreshold: ((i * 7) % NUM_MOLECULES + 0.5) / NUM_MOLECULES
+                });
+            }
+        }
+
+        // Disegna una singola molecola stilizzata H2O (Ossigeno rosso + 2 Idrogeni bianchi)
+        function drawWaterMolecule(ctx, x, y, angle, scale = 1) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(scale, scale);
+
+            // Angolo di legame H-O-H (~104.5 gradi)
+            const bondAngle = 0.91; // rad (~52 deg per lato)
+            const dist = 7.5;
+
+            // Atomi di Idrogeno (H)
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.2;
+
+            ctx.beginPath();
+            ctx.arc(Math.cos(-bondAngle) * dist, Math.sin(-bondAngle) * dist, 3.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(Math.cos(bondAngle) * dist, Math.sin(bondAngle) * dist, 3.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Atomo di Ossigeno (O)
+            ctx.fillStyle = '#ef4444';
+            ctx.strokeStyle = '#991b1b';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 5.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Riflesso speculare sull'ossigeno
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.beginPath();
+            ctx.arc(-1.8, -1.8, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        /**
+         * RENDERING CANVAS SIMULAZIONE MICRO/MACRO (Cilindro + Pistone + Termometro + Fiamma/Ghiaccio)
+         */
+        const simCanvas = document.getElementById('sim-canvas');
+        const simCtx = simCanvas.getContext('2d');
+
+        function renderSimulationCanvas(thermo, timeSec) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = simCanvas.getBoundingClientRect();
+            if (simCanvas.width !== Math.floor(rect.width * dpr) || simCanvas.height !== Math.floor(rect.height * dpr)) {
+                simCanvas.width = Math.floor(rect.width * dpr);
+                simCanvas.height = Math.floor(rect.height * dpr);
+            }
+            const ctx = simCtx;
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            const W = rect.width;
+            const H = rect.height;
+            ctx.clearRect(0, 0, W, H);
+
+            // Geometria cilindro graduato
+            const cylLeft = W * 0.24;
+            const cylWidth = W * 0.56;
+            const cylRight = cylLeft + cylWidth;
+            const cylTop = 26;
+            const cylBottom = H - 46;
+            const cylHeight = cylBottom - cylTop;
+
+            // Altezza pistone in base allo stato (leggera contrazione alla fusione del ghiaccio, forte espansione col vapore)
+            let volumeRatio = 0.44; // ghiaccio (densità minore dell'acqua)
+            if (thermo.phaseIndex === 1) {
+                volumeRatio = 0.43 + 0.01 * thermo.phaseProgress;
+            } else if (thermo.phaseIndex === 2) {
+                // Il ghiaccio fondendo diminuisce leggermente di volume (~9%)
+                volumeRatio = 0.44 - 0.04 * thermo.phaseProgress;
+            } else if (thermo.phaseIndex === 3) {
+                volumeRatio = 0.40 + 0.02 * thermo.phaseProgress;
+            } else if (thermo.phaseIndex === 4) {
+                // Espansione durante ebollizione
+                volumeRatio = 0.42 + 0.46 * thermo.phaseProgress;
+            } else {
+                // Espansione termica del gas
+                volumeRatio = 0.88 + 0.08 * thermo.phaseProgress;
+            }
+
+            const pistonY = cylBottom - cylHeight * volumeRatio;
+            const liquidLevelY = cylBottom - cylHeight * (0.40 * (1 - thermo.gasFraction));
+
+            // Sfondo interno cilindro
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(cylLeft, cylTop, cylWidth, cylHeight);
+
+            // Riempimento fase liquida / ghiaccio sul fondo
+            if (thermo.gasFraction < 1) {
+                const waterHeight = cylBottom - liquidLevelY;
+                const grad = ctx.createLinearGradient(0, liquidLevelY, 0, cylBottom);
+                if (thermo.phaseIndex === 1) {
+                    grad.addColorStop(0, 'rgba(186, 230, 253, 0.55)');
+                    grad.addColorStop(1, 'rgba(125, 211, 252, 0.75)');
+                } else if (thermo.phaseIndex === 2) {
+                    grad.addColorStop(0, 'rgba(153, 246, 228, 0.45)');
+                    grad.addColorStop(1, 'rgba(56, 189, 248, 0.55)');
+                } else {
+                    grad.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+                    grad.addColorStop(1, 'rgba(37, 99, 235, 0.45)');
+                }
+                ctx.fillStyle = grad;
+                ctx.fillRect(cylLeft, liquidLevelY, cylWidth, waterHeight);
+
+                // Menisco superficie liquida
+                if (thermo.phaseIndex >= 2) {
+                    ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cylLeft, liquidLevelY);
+                    ctx.lineTo(cylRight, liquidLevelY);
+                    ctx.stroke();
+                }
+            }
+
+            // Sfondo vapore (se presente)
+            if (thermo.gasFraction > 0) {
+                ctx.fillStyle = `rgba(254, 226, 226, ${0.15 + 0.25 * thermo.gasFraction})`;
+                ctx.fillRect(cylLeft, pistonY, cylWidth, liquidLevelY - pistonY);
+            }
+
+            // Aggiornamento e disegno delle molecole H2O
+            const padding = 14;
+            const boxLeft = cylLeft + padding;
+            const boxRight = cylRight - padding;
+            const boxBottom = cylBottom - padding;
+
+            // Disegna legami a idrogeno (linee tratteggiate) per le molecole ancora nello stato solido
+            if (thermo.phaseIndex <= 2) {
+                ctx.strokeStyle = 'rgba(14, 165, 233, 0.45)';
+                ctx.lineWidth = 1.3;
+                ctx.setLineDash([3, 3]);
+                for (let i = 0; i < molecules.length; i++) {
+                    const m1 = molecules[i];
+                    const isSolid1 = thermo.phaseIndex === 1 || m1.meltThreshold > thermo.liquidFraction;
+                    if (!isSolid1) continue;
+                    for (let j = i + 1; j < molecules.length; j++) {
+                        const m2 = molecules[j];
+                        const isSolid2 = thermo.phaseIndex === 1 || m2.meltThreshold > thermo.liquidFraction;
+                        if (!isSolid2) continue;
+                        const dx = m1.x - m2.x;
+                        const dy = m1.y - m2.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < 38) {
+                            ctx.beginPath();
+                            ctx.moveTo(m1.x, m1.y);
+                            ctx.lineTo(m2.x, m2.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                ctx.setLineDash([]);
+            }
+
+            // Aggiorna posizioni molecole in base alla fase
+            molecules.forEach((m) => {
+                const isGas = (thermo.phaseIndex === 4 && m.boilThreshold <= thermo.gasFraction) || thermo.phaseIndex === 5;
+                const isSolid = (thermo.phaseIndex === 1) || (thermo.phaseIndex === 2 && m.meltThreshold > thermo.liquidFraction);
+
+                if (isSolid) {
+                    // Reticolo cristallino ordinato + vibrazione termica proporzionale a T
+                    const vibAmp = 1.2 + ((thermo.T + 20) / 20) * 2.2;
+                    const latticeTop = pistonY + padding;
+                    const targetX = boxLeft + m.normX * (boxRight - boxLeft);
+                    const targetY = latticeTop + m.normY * (boxBottom - latticeTop);
+                    m.x = targetX + Math.sin(timeSec * 22 + m.phaseOffset) * vibAmp;
+                    m.y = targetY + Math.cos(timeSec * 25 + m.phaseOffset * 1.3) * vibAmp;
+                    m.angle = Math.sin(timeSec * 12 + m.phaseOffset) * 0.15;
+                } else if (isGas) {
+                    // Moto caotico ad alta velocità in tutto il volume sotto il pistone
+                    const speedMult = 2.6 + (Math.max(0, thermo.T - 100) / 20) * 1.4;
+                    m.x += m.vx * speedMult;
+                    m.y += m.vy * speedMult;
+                    m.angle += m.vAngle * 2.5;
+
+                    const gasTop = pistonY + padding;
+                    if (m.x < boxLeft) { m.x = boxLeft; m.vx = Math.abs(m.vx); }
+                    if (m.x > boxRight) { m.x = boxRight; m.vx = -Math.abs(m.vx); }
+                    if (m.y < gasTop) { m.y = gasTop; m.vy = Math.abs(m.vy); }
+                    if (m.y > boxBottom) { m.y = boxBottom; m.vy = -Math.abs(m.vy); }
+                } else {
+                    // Stato liquido: scorrimento continuo nella regione liquida
+                    const tempNorm = Math.max(0, Math.min(1, thermo.T / 100));
+                    const speedMult = 0.65 + tempNorm * 1.55;
+                    m.x += m.vx * speedMult;
+                    m.y += m.vy * speedMult;
+                    m.angle += m.vAngle * (0.8 + tempNorm);
+
+                    const liqTop = Math.min(boxBottom - 20, liquidLevelY + 10);
+                    if (m.x < boxLeft) { m.x = boxLeft; m.vx = Math.abs(m.vx); }
+                    if (m.x > boxRight) { m.x = boxRight; m.vx = -Math.abs(m.vx); }
+                    if (m.y < liqTop) { m.y = liqTop; m.vy = Math.abs(m.vy); }
+                    if (m.y > boxBottom) { m.y = boxBottom; m.vy = -Math.abs(m.vy); }
+                }
+
+                drawWaterMolecule(ctx, m.x, m.y, m.angle, 0.95);
+            });
+
+            // Bolle di vapore durante l'ebollizione
+            if (thermo.phaseIndex === 4 && thermo.gasFraction < 0.95) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.lineWidth = 1.5;
+                for (let b = 0; b < 7; b++) {
+                    const bx = cylLeft + 25 + ((b * 37) % (cylWidth - 50));
+                    const cycle = (timeSec * (1.2 + (b % 3) * 0.4) + b * 0.3) % 1;
+                    const by = cylBottom - 10 - cycle * Math.max(15, (cylBottom - liquidLevelY - 12));
+                    if (by > liquidLevelY + 6) {
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 3 + (b % 3) * 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Pistone mobile
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(cylLeft + 2, pistonY - 10, cylWidth - 4, 10);
+            // Guarnizioni pistone
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(cylLeft + 1, pistonY - 9, 4, 8);
+            ctx.fillRect(cylRight - 5, pistonY - 9, 4, 8);
+            // Stelo del pistone
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(cylLeft + cylWidth / 2 - 4, 4, 8, Math.max(0, pistonY - 14));
+
+            // Pareti del cilindro graduato
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(cylLeft, cylTop);
+            ctx.lineTo(cylLeft, cylBottom);
+            ctx.lineTo(cylRight, cylBottom);
+            ctx.lineTo(cylRight, cylTop);
+            ctx.stroke();
+
+            // Tacche graduate sul cilindro
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+            for (let g = 1; g <= 5; g++) {
+                const gy = cylBottom - (cylHeight * g) / 6;
+                ctx.beginPath();
+                ctx.moveTo(cylRight - 10, gy);
+                ctx.lineTo(cylRight, gy);
+                ctx.stroke();
+            }
+
+            // Sorgente termica sotto il cilindro (Fiamma o Raffreddamento)
+            const centerX = cylLeft + cylWidth / 2;
+            const baseY = H - 10;
+            if (state.direction === 1) {
+                // Fiamma Bunsen animata
+                const flicker = Math.sin(timeSec * 18) * 2.5;
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.moveTo(centerX - 18, baseY);
+                ctx.quadraticCurveTo(centerX - 8, baseY - 22 + flicker, centerX, baseY - 28 - flicker);
+                ctx.quadraticCurveTo(centerX + 8, baseY - 22 + flicker, centerX + 18, baseY);
+                ctx.fill();
+
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.moveTo(centerX - 9, baseY);
+                ctx.quadraticCurveTo(centerX, baseY - 16 - flicker * 0.5, centerX + 9, baseY);
+                ctx.fill();
+            } else {
+                // Piastra refrigerante azzurra
+                ctx.fillStyle = '#0284c7';
+                ctx.beginPath();
+                ctx.roundRect(centerX - 32, baseY - 14, 64, 10, 4);
+                ctx.fill();
+                ctx.fillStyle = '#e0f2fe';
+                ctx.font = 'bold 9px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('❄ RAFFREDDAMENTO', centerX, baseY - 6);
+            }
+
+            // Termometro a colonna sulla sinistra
+            const thermX = W * 0.11;
+            const thermTop = 36;
+            const thermBottom = cylBottom - 16;
+            const thermH = thermBottom - thermTop;
+
+            // Tubo vetro termometro
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.roundRect(thermX - 5, thermTop, 10, thermH, 5);
+            ctx.fill();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Livello mercurio/alcol (-20°C -> 120°C)
+            const tRatio = Math.max(0, Math.min(1, (thermo.T - PHYSICS.T_start) / (PHYSICS.T_end - PHYSICS.T_start)));
+            const fillH = thermH * (0.1 + 0.85 * tRatio);
+            const thermColor = thermo.T < 0 ? '#0284c7' : (thermo.T === 0 ? '#0d9488' : (thermo.T < 100 ? '#2563eb' : '#ef4444'));
+
+            ctx.fillStyle = thermColor;
+            ctx.beginPath();
+            ctx.roundRect(thermX - 3, thermBottom - fillH, 6, fillH, 3);
+            ctx.fill();
+
+            // Bulbo inferiore
+            ctx.beginPath();
+            ctx.arc(thermX, thermBottom + 6, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Etichette T sul termometro
+            ctx.fillStyle = '#475569';
+            ctx.font = '600 10px JetBrains Mono, monospace';
+            ctx.textAlign = 'right';
+            const y100 = thermBottom - thermH * (0.1 + 0.85 * (120 / 140));
+            const y0 = thermBottom - thermH * (0.1 + 0.85 * (20 / 140));
+            ctx.fillText('100°', thermX - 9, y100 + 3);
+            ctx.fillText('0°', thermX - 9, y0 + 3);
+
+            // Valore T corrente accanto al bulbo
+            ctx.textAlign = 'center';
+            ctx.fillStyle = thermColor;
+            ctx.font = 'bold 11px JetBrains Mono, monospace';
+            ctx.fillText(`${thermo.T.toFixed(1)}°C`, thermX, thermBottom + 27);
+
+            ctx.restore();
+        }
+
+        /**
+         * RENDERING GRAFICO INTERATTIVO CURVA DI RISCALDAMENTO (T vs Q)
+         */
+        const graphCanvas = document.getElementById('graph-canvas');
+        const graphCtx = graphCanvas.getContext('2d');
+        let graphPlotBox = { left: 56, right: 20, top: 24, bottom: 44, width: 0, height: 0 };
+
+        function qToCanvasX(q, box) {
+            return box.left + (q / Q5) * box.width;
+        }
+
+        function tToCanvasY(t, box) {
+            const norm = (t - PHYSICS.T_start) / (PHYSICS.T_end - PHYSICS.T_start);
+            return box.top + box.height * (1 - norm);
+        }
+
+        function renderGraphCanvas(thermo) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = graphCanvas.getBoundingClientRect();
+            if (graphCanvas.width !== Math.floor(rect.width * dpr) || graphCanvas.height !== Math.floor(rect.height * dpr)) {
+                graphCanvas.width = Math.floor(rect.width * dpr);
+                graphCanvas.height = Math.floor(rect.height * dpr);
+            }
+            const ctx = graphCtx;
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            const W = rect.width;
+            const H = rect.height;
+            ctx.clearRect(0, 0, W, H);
+
+            graphPlotBox = {
+                left: 58,
+                right: W - 22,
+                top: 24,
+                bottom: H - 44,
+                width: W - 80,
+                height: H - 68
+            };
+            const box = graphPlotBox;
+
+            // Griglia orizzontale (Temperature chiave: -20, 0, 20, 40, 60, 80, 100, 120)
+            const tempTicks = [-20, 0, 20, 40, 60, 80, 100, 120];
+            ctx.font = '11px JetBrains Mono, monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            tempTicks.forEach(t => {
+                const y = tToCanvasY(t, box);
+                const isKeyTemp = (t === 0 || t === 100);
+                ctx.strokeStyle = isKeyTemp ? '#cbd5e1' : '#f1f5f9';
+                ctx.lineWidth = isKeyTemp ? 1.5 : 1;
+                if (isKeyTemp) ctx.setLineDash([4, 4]);
+
+                ctx.beginPath();
+                ctx.moveTo(box.left, y);
+                ctx.lineTo(box.right, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = isKeyTemp ? '#0f172a' : '#64748b';
+                ctx.font = isKeyTemp ? 'bold 11px JetBrains Mono, monospace' : '11px JetBrains Mono, monospace';
+                ctx.fillText(`${t}°C`, box.left - 8, y);
+            });
+
+            // Griglia verticale (Soglie Q1, Q2, Q3, Q4, Q5)
+            const qTicks = [0, 500, 1000, 1500, 2000, 2500, 3000];
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            qTicks.forEach(q => {
+                const x = qToCanvasX(q, box);
+                ctx.strokeStyle = '#f1f5f9';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, box.top);
+                ctx.lineTo(x, box.bottom);
+                ctx.stroke();
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px JetBrains Mono, monospace';
+                ctx.fillText(`${q}`, x, box.bottom + 8);
+            });
+
+            // Linee guida verticali tratteggiate per i cambi di fase (Q1, Q2, Q3, Q4)
+            [Q1, Q2, Q3, Q4].forEach(qBound => {
+                const x = qToCanvasX(qBound, box);
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, box.top);
+                ctx.lineTo(x, box.bottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+
+            // Assi cartesiani principali
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(box.left, box.top - 6);
+            ctx.lineTo(box.left, box.bottom);
+            ctx.lineTo(box.right + 6, box.bottom);
+            ctx.stroke();
+
+            // Titoli degli Assi
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('Calore Q (kJ) / Tempo →', box.right, box.bottom + 24);
+
+            ctx.save();
+            ctx.translate(15, box.top + box.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('Temperatura T (°C)', 0, 0);
+            ctx.restore();
+
+            // Punti della spezzata a 5 tratti
+            const segments = [
+                { qA: 0,  tA: -20, qB: Q1, tB: 0,   color: '#38bdf8', label: 'Solido' },
+                { qA: Q1, tA: 0,   qB: Q2, tB: 0,   color: '#2dd4bf', label: 'Fusione (L_f)' },
+                { qA: Q2, tA: 0,   qB: Q3, tB: 100, color: '#2563eb', label: 'Liquido' },
+                { qA: Q3, tA: 100, qB: Q4, tB: 100, color: '#f59e0b', label: 'Vaporizzazione (L_v)' },
+                { qA: Q4, tA: 100, qB: Q5, tB: 120, color: '#ef4444', label: 'Vapore' }
+            ];
+
+            // Disegna curva completa (traccia base leggermente trasparente) e porzione già percorsa (spessa e brillante)
+            segments.forEach((seg, idx) => {
+                const x1 = qToCanvasX(seg.qA, box);
+                const y1 = tToCanvasY(seg.tA, box);
+                const x2 = qToCanvasX(seg.qB, box);
+                const y2 = tToCanvasY(seg.tB, box);
+
+                // Traccia completa di sfondo
+                ctx.strokeStyle = seg.color;
+                ctx.globalAlpha = 0.28;
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                // Traccia percorsa fino a thermo.Q
+                if (thermo.Q > seg.qA) {
+                    const endQ = Math.min(thermo.Q, seg.qB);
+                    const ratio = (endQ - seg.qA) / (seg.qB - seg.qA);
+                    const curX = x1 + (x2 - x1) * ratio;
+                    const curY = y1 + (y2 - y1) * ratio;
+
+                    ctx.strokeStyle = seg.color;
+                    ctx.lineWidth = 4.5;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(curX, curY);
+                    ctx.stroke();
+                }
+
+                // Etichette didattiche sulle soste termiche
+                if (idx === 1) {
+                    ctx.fillStyle = '#0f766e';
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Sosta: Fusione', (x1 + x2) / 2, y1 - 10);
+                } else if (idx === 3) {
+                    ctx.fillStyle = '#b45309';
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Sosta: Ebollizione (L_v = 2260 kJ)', (x1 + x2) / 2, y1 - 10);
+                }
+            });
+
+            // Cursore interattivo sincronizzato (Q, T)
+            const curX = qToCanvasX(thermo.Q, box);
+            const curY = tToCanvasY(thermo.T, box);
+
+            // Proiezioni sugli assi
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(curX, curY);
+            ctx.lineTo(curX, box.bottom);
+            ctx.moveTo(curX, curY);
+            ctx.lineTo(box.left, curY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Alone esterno pulsante
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.14)';
+            ctx.beginPath();
+            ctx.arc(curX, curY, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Punto centrale cursore
+            const activeColor = segments[thermo.phaseIndex - 1].color;
+            ctx.fillStyle = activeColor;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(curX, curY, 6.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Tooltip dinamico sul punto
+            const tooltipText = `(${thermo.Q.toFixed(0)} kJ ; ${thermo.T.toFixed(1)} °C)`;
+            ctx.font = 'bold 11px JetBrains Mono, monospace';
+            const textW = ctx.measureText(tooltipText).width + 14;
+            const tipX = Math.min(box.right - textW, Math.max(box.left + 4, curX - textW / 2));
+            const tipY = curY > box.top + 34 ? curY - 30 : curY + 14;
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.roundRect(tipX, tipY, textW, 20, 6);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tooltipText, tipX + textW / 2, tipY + 10);
+
+            ctx.restore();
+        }
+
+        /**
+         * AGGIORNAMENTO INTERFACCIA TESTUALE E SCHEDA TEORICA DINAMICA
+         */
+        function updateUI(thermo) {
+            // Header
+            document.getElementById('header-q').textContent = `${thermo.Q.toFixed(1)} kJ`;
+            document.getElementById('header-t').textContent = `${thermo.T.toFixed(1)} °C`;
+            document.getElementById('q-slider').value = thermo.Q;
+
+            // Barre Energia
+            document.getElementById('ec-bar').style.width = `${thermo.ecPercent}%`;
+            document.getElementById('ec-percent').textContent = `${thermo.ecPercent}%`;
+            document.getElementById('ep-bar').style.width = `${thermo.epPercent}%`;
+            document.getElementById('ep-percent').textContent = `${thermo.epPercent}%`;
+
+            const badge = document.getElementById('header-phase-badge');
+            const fractionPill = document.getElementById('phase-fraction-pill');
+            const energyModeBadge = document.getElementById('energy-mode-badge');
+            const stepBadge = document.getElementById('theory-step-badge');
+            const titleEl = document.getElementById('theory-title');
+            const slopeTag = document.getElementById('theory-slope-tag');
+            const descEl = document.getElementById('theory-desc');
+            const formulaEl = document.getElementById('theory-formula');
+            const lawNameEl = document.getElementById('theory-law-name');
+            const calcEl = document.getElementById('theory-calc');
+            const tipEl = document.getElementById('theory-tip');
+
+            if (thermo.phaseIndex === 1) {
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-100 text-sky-800';
+                badge.textContent = 'Solido (Ghiaccio)';
+                fractionPill.textContent = '100% Solido';
+                energyModeBadge.textContent = '↑ Energia Cinetica (T sale)';
+                energyModeBadge.className = 'text-xs font-semibold text-sky-600';
+
+                stepBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-100 text-sky-800';
+                stepBadge.textContent = 'TRATTO 1 • SOLIDO';
+                titleEl.textContent = 'Riscaldamento del Ghiaccio (-20 °C → 0 °C)';
+                slopeTag.textContent = 'Tratto inclinato • c_s = 2,09 kJ/(kg·K)';
+                descEl.textContent = 'Nel ghiaccio le molecole H₂O sono bloccate in un reticolo cristallino esagonale dai legami a idrogeno. Fornendo calore, aumenta l’energia cinetica di vibrazione attorno alle posizioni di equilibrio e la temperatura cresce linearmente fino a 0 °C.';
+                formulaEl.innerHTML = 'Q = m · c<sub>s</sub> · ΔT';
+                lawNameEl.textContent = 'Legge fondamentale della termologia (fase solida)';
+                const dT = thermo.T - (-20);
+                calcEl.innerHTML = `ΔQ = 1,00 kg · 2,09 kJ/(kg·K) · ${dT.toFixed(1)} K = <strong>${thermo.Q.toFixed(1)} kJ</strong>`;
+                tipEl.innerHTML = '<strong>Confronto pendenze:</strong> Il calore specifico del ghiaccio (2,09 kJ/kg·K) è circa la metà di quello dell’acqua liquida: per questo motivo la retta ha una pendenza quasi doppia rispetto al tratto liquido.';
+            } else if (thermo.phaseIndex === 2) {
+                const pctLiq = Math.round(thermo.liquidFraction * 100);
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-teal-100 text-teal-800';
+                badge.textContent = 'Sosta Termica: Fusione';
+                fractionPill.textContent = `${100 - pctLiq}% Solido • ${pctLiq}% Liquido`;
+                energyModeBadge.textContent = '↑ Energia Potenziale (T = 0 °C cost.)';
+                energyModeBadge.className = 'text-xs font-semibold text-teal-600';
+
+                stepBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-teal-100 text-teal-800';
+                stepBadge.textContent = 'TRATTO 2 • FUSIONE';
+                titleEl.textContent = 'Sosta Termica: Fusione del Ghiaccio (T = 0 °C costante)';
+                slopeTag.textContent = 'Pianerottolo • L_f = 334 kJ/kg';
+                descEl.textContent = 'A 0 °C inizia la fusione. Tutto il calore fornito viene utilizzato per rompere i rigidi legami a idrogeno del reticolo cristallino (aumenta l’energia potenziale intermolecolare), mentre l’energia cinetica media resta invariata: la temperatura non cambia finché tutto il ghiaccio non è fuso.';
+                formulaEl.innerHTML = 'Q = m<sub>fusa</sub> · L<sub>f</sub>';
+                lawNameEl.textContent = 'Calore latente di fusione (passaggio solido → liquido)';
+                const dQ = thermo.Q - Q1;
+                calcEl.innerHTML = `ΔQ<sub>lat</sub> = ${thermo.liquidFraction.toFixed(2)} kg · 334 kJ/kg = <strong>${dQ.toFixed(1)} kJ</strong> (su 334 kJ)`;
+                tipEl.innerHTML = '<strong>Anomalia dell’acqua:</strong> Osserva il pistone! Fondendo, il ghiaccio riduce leggermente il proprio volume (~9%) perché le molecole liquide si impacchettano più strettamente rispetto al reticolo esagonale aperto.';
+            } else if (thermo.phaseIndex === 3) {
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-100 text-blue-800';
+                badge.textContent = 'Liquido (Acqua)';
+                fractionPill.textContent = '100% Liquido';
+                energyModeBadge.textContent = '↑ Energia Cinetica (T sale)';
+                energyModeBadge.className = 'text-xs font-semibold text-blue-600';
+
+                stepBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800';
+                stepBadge.textContent = 'TRATTO 3 • LIQUIDO';
+                titleEl.textContent = 'Riscaldamento dell’Acqua Liquida (0 °C → 100 °C)';
+                slopeTag.textContent = 'Tratto inclinato • c_l = 4,186 kJ/(kg·K)';
+                descEl.textContent = 'Tutto il ghiaccio è fuso. Le molecole d’acqua scorrono le une sulle altre mantenendo legami a idrogeno temporanei. L’energia fornita fa aumentare la velocità media di traslazione delle molecole (energia cinetica), facendo salire la temperatura da 0 °C a 100 °C.';
+                formulaEl.innerHTML = 'Q = m · c<sub>l</sub> · ΔT';
+                lawNameEl.textContent = 'Legge fondamentale della termologia (fase liquida)';
+                const dT = thermo.T - 0;
+                const dQ = thermo.Q - Q2;
+                calcEl.innerHTML = `ΔQ = 1,00 kg · 4,186 kJ/(kg·K) · ${dT.toFixed(1)} K = <strong>${dQ.toFixed(1)} kJ</strong>`;
+                tipEl.innerHTML = '<strong>Elevata capacità termica:</strong> L’acqua liquida ha uno dei calori specifici più alti in natura (4186 J/kg·K): assorbe grandi quantità di calore scaldandosi lentamente, mitigando il clima costiero.';
+            } else if (thermo.phaseIndex === 4) {
+                const pctGas = Math.round(thermo.gasFraction * 100);
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800';
+                badge.textContent = 'Sosta Termica: Ebollizione';
+                fractionPill.textContent = `${100 - pctGas}% Liquido • ${pctGas}% Vapore`;
+                energyModeBadge.textContent = '↑ Energia Potenziale (T = 100 °C cost.)';
+                energyModeBadge.className = 'text-xs font-semibold text-amber-600';
+
+                stepBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800';
+                stepBadge.textContent = 'TRATTO 4 • VAPORIZZAZIONE';
+                titleEl.textContent = 'Sosta Termica: Ebollizione dell’Acqua (T = 100 °C costante)';
+                slopeTag.textContent = 'Pianerottolo lungo • L_v = 2260 kJ/kg';
+                descEl.textContent = 'A 100 °C (a pressione atmosferica) l’acqua bolle in tutto il suo volume. Il calore assorbito serve a vincere completamente le forze di attrazione intermolecolare e a compiere lavoro di espansione contro la pressione esterna (sollevando il pistone). La temperatura resta ferma a 100 °C.';
+                formulaEl.innerHTML = 'Q = m<sub>evap</sub> · L<sub>v</sub>';
+                lawNameEl.textContent = 'Calore latente di vaporizzazione (liquido → aeriforme)';
+                const dQ = thermo.Q - Q3;
+                calcEl.innerHTML = `ΔQ<sub>lat</sub> = ${thermo.gasFraction.toFixed(2)} kg · 2260 kJ/kg = <strong>${dQ.toFixed(1)} kJ</strong> (su 2260 kJ)`;
+                tipEl.innerHTML = '<strong>Perché L_v è quasi 7 volte L_f?</strong> Nella fusione le molecole restano comunque vicine; nella vaporizzazione bisogna separarle completamente portandole a grandi distanze: servono ben 2260 kJ per 1 kg!';
+            } else {
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-red-100 text-red-800';
+                badge.textContent = 'Aeriforme (Vapore)';
+                fractionPill.textContent = '100% Vapore';
+                energyModeBadge.textContent = '↑ Energia Cinetica (T sale)';
+                energyModeBadge.className = 'text-xs font-semibold text-red-600';
+
+                stepBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-red-100 text-red-800';
+                stepBadge.textContent = 'TRATTO 5 • VAPORE';
+                titleEl.textContent = 'Surriscaldamento del Vapore Acqueo (> 100 °C)';
+                slopeTag.textContent = 'Tratto inclinato • c_v = 2,01 kJ/(kg·K)';
+                descEl.textContent = 'Tutta l’acqua è passata allo stato aeriforme. Le molecole sono ormai libere dai legami reciproci e si muovono velocemente in modo caotico urtando le pareti del recipiente. Ulteriore calore aumenta di nuovo l’energia cinetica traslazionale e quindi la temperatura sopra i 100 °C.';
+                formulaEl.innerHTML = 'Q = m · c<sub>v</sub> · ΔT';
+                lawNameEl.textContent = 'Legge fondamentale della termologia (fase aeriforme)';
+                const dT = thermo.T - 100;
+                const dQ = thermo.Q - Q4;
+                calcEl.innerHTML = `ΔQ = 1,00 kg · 2,01 kJ/(kg·K) · ${dT.toFixed(1)} K = <strong>${dQ.toFixed(1)} kJ</strong>`;
+                tipEl.innerHTML = '<strong>Pericolo ustioni da vapore:</strong> Il vapore a 100 °C contiene 2260 kJ/kg di energia latente in più rispetto all’acqua bollente a 100 °C, che vengono rilasciati istantaneamente condensando sulla pelle.';
+            }
+        }
+
+        /**
+         * GESTIONE INTERAZIONI UTENTE (Slider, Bottoni, Click/Drag sul Grafico)
+         */
+        const qSlider = document.getElementById('q-slider');
+        const btnPlay = document.getElementById('btn-play');
+        const btnPlayText = document.getElementById('btn-play-text');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+        const btnReset = document.getElementById('btn-reset');
+        const modeHeatBtn = document.getElementById('mode-heat');
+        const modeCoolBtn = document.getElementById('mode-cool');
+
+        function setPlaying(playing) {
+            state.isPlaying = playing;
+            if (playing) {
+                btnPlayText.textContent = 'Pausa';
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+                btnPlay.classList.replace('bg-blue-600', 'bg-slate-800');
+                btnPlay.classList.replace('hover:bg-blue-700', 'hover:bg-slate-900');
+            } else {
+                btnPlayText.textContent = 'Avvia Simulazione';
+                iconPlay.classList.remove('hidden');
+                iconPause.classList.add('hidden');
+                btnPlay.classList.replace('bg-slate-800', 'bg-blue-600');
+                btnPlay.classList.replace('hover:bg-slate-900', 'hover:bg-blue-700');
+            }
+        }
+
+        function setDirection(dir) {
+            state.direction = dir;
+            if (dir === 1) {
+                modeHeatBtn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white text-orange-600 shadow-sm transition flex items-center gap-1.5';
+                modeCoolBtn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+            } else {
+                modeCoolBtn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white text-sky-600 shadow-sm transition flex items-center gap-1.5';
+                modeHeatBtn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+            }
+        }
+
+        qSlider.addEventListener('input', (e) => {
+            setPlaying(false);
+            state.Q = parseFloat(e.target.value);
+        });
+
+        btnPlay.addEventListener('click', () => {
+            // Se siamo già al limite nella direzione corrente, riparti dall'estremo opposto
+            if (!state.isPlaying) {
+                if (state.direction === 1 && state.Q >= Q5 - 1) state.Q = 0;
+                if (state.direction === -1 && state.Q <= 1) state.Q = Q5;
+            }
+            setPlaying(!state.isPlaying);
+        });
+
+        btnReset.addEventListener('click', () => {
+            setPlaying(false);
+            setDirection(1);
+            state.Q = 0;
+        });
+
+        modeHeatBtn.addEventListener('click', () => setDirection(1));
+        modeCoolBtn.addEventListener('click', () => setDirection(-1));
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setPlaying(false);
+                state.Q = parseFloat(btn.dataset.targetQ);
+            });
+        });
+
+        // Interazione diretta (click / drag / touch) sul grafico T vs Q
+        function updateQFromGraphEvent(clientX) {
+            const rect = graphCanvas.getBoundingClientRect();
+            const relX = clientX - rect.left;
+            const ratio = Math.max(0, Math.min(1, (relX - graphPlotBox.left) / graphPlotBox.width));
+            state.Q = ratio * Q5;
+        }
+
+        graphCanvas.addEventListener('mousedown', (e) => {
+            setPlaying(false);
+            state.isDraggingGraph = true;
+            updateQFromGraphEvent(e.clientX);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (state.isDraggingGraph) {
+                updateQFromGraphEvent(e.clientX);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            state.isDraggingGraph = false;
+        });
+
+        graphCanvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                setPlaying(false);
+                state.isDraggingGraph = true;
+                updateQFromGraphEvent(e.touches[0].clientX);
+            }
+        }, { passive: true });
+
+        graphCanvas.addEventListener('touchmove', (e) => {
+            if (state.isDraggingGraph && e.touches.length > 0) {
+                updateQFromGraphEvent(e.touches[0].clientX);
+            }
+        }, { passive: true });
+
+        graphCanvas.addEventListener('touchend', () => {
+            state.isDraggingGraph = false;
+        });
+
+        /**
+         * MINI-QUIZ DI AUTOVALUTAZIONE (4 Domande Liceo Scientifico)
+         */
+        const quizData = [
+            {
+                q: "Perché durante l'ebollizione dell'acqua (a 100 °C e 1 atm) la temperatura rimane costante anche continuando a fornire calore?",
+                options: [
+                    "Perché il fornello smette di trasferire energia all'acqua",
+                    "Perché il calore assorbito aumenta l'energia potenziale rompendo i legami intermolecolari, non l'energia cinetica media",
+                    "Perché il calore specifico dell'acqua diventa infinito a 100 °C"
+                ],
+                correct: 1,
+                explanation: "Esatto! Durante una sosta termica l'energia fornita (calore latente) viene spesa per rompere i legami tra le molecole (energia potenziale), lasciando invariata la loro velocità media (energia cinetica → temperatura)."
+            },
+            {
+                q: "Osservando la curva di riscaldamento, perché il pianerottolo dell'ebollizione è molto più lungo di quello della fusione?",
+                options: [
+                    "Perché il calore latente di vaporizzazione (2260 kJ/kg) è quasi 7 volte maggiore di quello di fusione (334 kJ/kg)",
+                    "Perché l'acqua bolle a una temperatura più alta rispetto a quella di fusione",
+                    "Perché il vapore ha una massa maggiore del ghiaccio"
+                ],
+                correct: 0,
+                explanation: "Corretto! Separare completamente le molecole allo stato gassoso richiede molta più energia (L_v = 2260 kJ/kg) rispetto al semplice allentamento del reticolo cristallino nella fusione (L_f = 334 kJ/kg)."
+            },
+            {
+                q: "Confrontando i tratti inclinati, perché la retta del ghiaccio è più ripida rispetto a quella dell'acqua liquida?",
+                options: [
+                    "Perché il ghiaccio conduce meglio il calore",
+                    "Perché il calore specifico del ghiaccio (2,09 kJ/kg·K) è circa la metà di quello dell'acqua liquida (4,186 kJ/kg·K)",
+                    "Perché la massa del ghiaccio diminuisce mentre si scalda"
+                ],
+                correct: 1,
+                explanation: "Ottimo! La pendenza del grafico T-Q è ΔT/Q = 1/(m·c). A parità di massa, un calore specifico minore corrisponde a una pendenza maggiore."
+            },
+            {
+                q: "Quanta energia termica bisogna sottrarre a 1 kg di acqua liquida a 0 °C per trasformarla completamente in ghiaccio a 0 °C?",
+                options: [
+                    "4,186 kJ",
+                    "334 kJ",
+                    "2260 kJ"
+                ],
+                correct: 1,
+                explanation: "Esatto! La solidificazione è il processo inverso della fusione: per solidificare 1 kg d'acqua a 0 °C occorre sottrarre esattamente Q = m · L_f = 1 kg · 334 kJ/kg = 334 kJ."
+            }
+        ];
+
+        let currentQuizIdx = 0;
+        let quizScore = 0;
+        let quizAnswered = false;
+
+        function renderQuizQuestion() {
+            const item = quizData[currentQuizIdx];
+            quizAnswered = false;
+            document.getElementById('quiz-progress').textContent = `Domanda ${currentQuizIdx + 1} / ${quizData.length}`;
+            document.getElementById('quiz-question').textContent = item.q;
+            const optionsContainer = document.getElementById('quiz-options');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const nextBtn = document.getElementById('quiz-next-btn');
+
+            feedbackEl.classList.add('hidden');
+            nextBtn.disabled = true;
+            nextBtn.textContent = currentQuizIdx === quizData.length - 1 ? 'Ricomincia Quiz ↺' : 'Prossima Domanda →';
+
+            optionsContainer.innerHTML = '';
+            item.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 text-xs font-medium text-slate-700 transition';
+                btn.textContent = optText;
+                btn.addEventListener('click', () => handleQuizAnswer(idx, btn));
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleQuizAnswer(selectedIdx, selectedBtn) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+            const item = quizData[currentQuizIdx];
+            const allBtns = document.getElementById('quiz-options').querySelectorAll('button');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const nextBtn = document.getElementById('quiz-next-btn');
+
+            allBtns.forEach((b, i) => {
+                b.disabled = true;
+                if (i === item.correct) {
+                    b.className = 'w-full text-left p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-xs font-semibold text-emerald-900';
+                } else if (i === selectedIdx) {
+                    b.className = 'w-full text-left p-2.5 rounded-xl border-2 border-red-400 bg-red-50 text-xs font-semibold text-red-900';
+                } else {
+                    b.className = 'w-full text-left p-2.5 rounded-xl border border-slate-200 opacity-50 text-xs text-slate-500';
+                }
+            });
+
+            if (selectedIdx === item.correct) {
+                quizScore++;
+                feedbackEl.className = 'mt-3 p-3 rounded-xl text-xs leading-relaxed bg-emerald-50 border border-emerald-200 text-emerald-900';
+                feedbackEl.innerHTML = `<strong>Corretto!</strong> ${item.explanation}`;
+            } else {
+                feedbackEl.className = 'mt-3 p-3 rounded-xl text-xs leading-relaxed bg-amber-50 border border-amber-200 text-amber-900';
+                feedbackEl.innerHTML = `<strong>Non proprio.</strong> ${item.explanation}`;
+            }
+
+            feedbackEl.classList.remove('hidden');
+            document.getElementById('quiz-score').textContent = `Punteggio: ${quizScore} / ${quizData.length}`;
+            nextBtn.disabled = false;
+        }
+
+        document.getElementById('quiz-next-btn').addEventListener('click', () => {
+            if (currentQuizIdx < quizData.length - 1) {
+                currentQuizIdx++;
+            } else {
+                currentQuizIdx = 0;
+                quizScore = 0;
+                document.getElementById('quiz-score').textContent = `Punteggio: 0 / ${quizData.length}`;
+            }
+            renderQuizQuestion();
+        });
+
+        /**
+         * LOOP PRINCIPALE DI ANIMAZIONE
+         */
+        let lastTrackedPhase = -1;
+        let lastTrackedQ = -1;
+
+        function animate(timestamp) {
+            if (!state.lastTimestamp) state.lastTimestamp = timestamp;
+            const dt = Math.min(0.05, (timestamp - state.lastTimestamp) / 1000);
+            state.lastTimestamp = timestamp;
+
+            if (state.isPlaying) {
+                state.Q += state.direction * state.powerRate * dt;
+                if (state.Q >= Q5) {
+                    state.Q = Q5;
+                    setPlaying(false);
+                } else if (state.Q <= 0) {
+                    state.Q = 0;
+                    setPlaying(false);
+                }
+            }
+
+            const thermo = getThermoState(state.Q);
+            const timeSec = timestamp / 1000;
+
+            renderSimulationCanvas(thermo, timeSec);
+            renderGraphCanvas(thermo);
+
+            // Aggiorna il DOM solo quando Q cambia per ottimizzare le prestazioni
+            if (Math.abs(thermo.Q - lastTrackedQ) > 0.05 || thermo.phaseIndex !== lastTrackedPhase) {
+                updateUI(thermo);
+                lastTrackedQ = thermo.Q;
+                lastTrackedPhase = thermo.phaseIndex;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Inizializzazione al caricamento della finestra
+        window.onload = function () {
+            initMolecules();
+            renderQuizQuestion();
+            const initialThermo = getThermoState(0);
+            updateUI(initialThermo);
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
