@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Didattica WebApp — Prof. Marco Palladino</title>
+  <meta name="description" content="Portale delle applicazioni didattiche interattive realizzate dal Prof. Marco Palladino (Informatica - Sistemi).">
+  <style>
+    :root {
+      --matrix-green: #00ff41;
+      --matrix-green-dim: #008f11;
+      --matrix-glow: rgba(0, 255, 65, 0.35);
+      --bg-dark: #030a04;
+      --card-bg: rgba(6, 18, 9, 0.82);
+      --card-border: rgba(0, 255, 65, 0.28);
+      --text-main: #e6f5ea;
+      --text-muted: #98b8a0;
+      --accent-amber: #ffbe55;
+      --accent-cyan: #38e8ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Sfondo animato Matrix */
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      display: block;
+    }
+
+    /* Velatura per garantire leggibilità dei contenuti */
+    .bg-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 20%, rgba(3, 15, 6, 0.45), rgba(2, 8, 3, 0.86));
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* Barra superiore */
+    header {
+      width: 100%;
+      padding: 1.1rem 2rem;
+      background: rgba(3, 12, 5, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand-tag {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.95rem;
+      color: var(--matrix-green);
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--matrix-green);
+      box-shadow: 0 0 10px var(--matrix-green);
+      animation: pulse 2s infinite;
+    }
+
+    .prof-badge {
+      margin-left: auto;
+      text-align: right;
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: rgba(0, 255, 65, 0.08);
+      border: 1px solid var(--card-border);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 255, 65, 0.12);
+    }
+
+    .prof-name {
+      color: var(--matrix-green);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.03em;
+    }
+
+    .prof-role {
+      color: var(--text-main);
+      font-size: 0.88rem;
+      opacity: 0.9;
+    }
+
+    /* Contenitore principale */
+    main {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 3.5rem;
+      flex: 1;
+    }
+
+    /* Sezione introduttiva didattica */
+    .hero {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2.2rem 2.4rem;
+      margin-bottom: 2.5rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 0 24px rgba(0, 255, 65, 0.04);
+    }
+
+    .hero-eyebrow {
+      font-family: 'Consolas', 'Courier New', monospace;
+      color: var(--matrix-green);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 0.6rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 18px rgba(0, 255, 65, 0.25);
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.03rem;
+      margin-bottom: 0.9rem;
+      max-width: 82ch;
+    }
+
+    .hero p:last-of-type {
+      margin-bottom: 1.3rem;
+    }
+
+    .didattica-pillars {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+    }
+
+    .pillar {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: var(--matrix-green);
+      background: rgba(0, 255, 65, 0.08);
+      border: 1px solid rgba(0, 255, 65, 0.25);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    /* Titolo sezione app */
+    .section-title {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 1.15rem;
+      color: var(--matrix-green);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--card-border), transparent);
+    }
+
+    /* Griglia Card App */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 1.8rem;
+    }
+
+    .app-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    }
+
+    .app-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--matrix-green);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 22px var(--matrix-glow);
+    }
+
+    .app-thumb {
+      display: block;
+      position: relative;
+      height: 210px;
+      background: #041007;
+      border-bottom: 1px solid var(--card-border);
+      overflow: hidden;
+    }
+
+    .app-thumb svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+
+    .app-card:hover .app-thumb svg {
+      transform: scale(1.04);
+    }
+
+    .app-number {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--matrix-green);
+      background: rgba(3, 12, 5, 0.85);
+      border: 1px solid var(--card-border);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+    }
+
+    .app-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .app-body h2 {
+      font-size: 1.35rem;
+      color: #ffffff;
+      margin-bottom: 0.6rem;
+    }
+
+    .app-body p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.4rem;
+      flex: 1;
+    }
+
+    .app-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.8rem 1.2rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #031206;
+      background: var(--matrix-green);
+      box-shadow: 0 0 16px rgba(0, 255, 65, 0.3);
+      transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    }
+
+    .app-link:hover {
+      background: #42ff71;
+      box-shadow: 0 0 24px rgba(0, 255, 65, 0.55);
+    }
+
+    .app-link:active {
+      transform: scale(0.98);
+    }
+
+    .app-url-hint {
+      margin-top: 0.75rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #6b8f74;
+      word-break: break-all;
+      text-align: center;
+    }
+
+    /* Footer */
+    footer {
+      background: rgba(3, 12, 5, 0.88);
+      border-top: 1px solid var(--card-border);
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--matrix-green);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      color: var(--matrix-green);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(0, 255, 65, 0.12);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    @media (max-width: 640px) {
+      header {
+        padding: 1rem 1.2rem;
+      }
+      .prof-badge {
+        width: 100%;
+        text-align: right;
+      }
+      .hero {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix-canvas" aria-hidden="true"></canvas>
+  <div class="bg-overlay" aria-hidden="true"></div>
+
+  <header>
+    <a class="brand-tag" href="https://marcopalladino.github.io/didattica-webapp/">
+      <span class="brand-dot"></span>
+      <span>~/didattica-webapp</span>
+    </a>
+
+    <div class="prof-badge">
+      <div class="prof-name">Prof. Marco Palladino <span class="prof-role">(informatica-sistemi)</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-eyebrow">&gt;_ Laboratorio Digitale Interattivo</div>
+      <h1>Menu delle WebApp per la Didattica</h1>
+      <p>
+        Benvenuti nel portale delle applicazioni web didattiche progettate per trasformare i concetti teorici
+        in modelli visivi e interattivi. Ogni simulazione consente agli studenti di modificare parametri in tempo reale,
+        osservare l'evoluzione dei fenomeni e verificare le relazioni causa-effetto tipiche dell'approccio laboratoriale
+        e del pensiero computazionale.
+      </p>
+      <p>
+        Le applicazioni funzionano direttamente dal browser su PC, LIM o tablet senza necessità di installazione,
+        facilitando l'apprendimento attivo in aula e lo studio autonomo a casa.
+      </p>
+      <div class="didattica-pillars">
+        <span class="pillar">#SimulazioneInterattiva</span>
+        <span class="pillar">#ApprendimentoAttivo</span>
+        <span class="pillar">#ModelliSistemi</span>
+        <span class="pillar">#OpenWebApp</span>
+      </div>
+    </section>
+
+    <div class="section-title">&gt; Applicazioni Disponibili [2]</div>
+
+    <section class="apps-grid">
+      <!-- APP 1: Fermentazione del Pane -->
+      <article class="app-card">
+        <a class="app-thumb"
+           href="https://marcopalladino.github.io/didattica-webapp/fermetazione%20pane%20FINALE.html"
+           aria-label="Apri app Fermentazione del Pane">
+          <span class="app-number">APP 01</span>
+          <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustrazione Fermentazione del Pane">
+            <defs>
+              <linearGradient id="bgBread" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#051709"/>
+                <stop offset="100%" stop-color="#0d2612"/>
+              </linearGradient>
+              <linearGradient id="loafGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffd27d"/>
+                <stop offset="60%" stop-color="#d98a2b"/>
+                <stop offset="100%" stop-color="#8c4c10"/>
+              </linearGradient>
+              <filter id="glowGreen">
+                <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <rect width="400" height="220" fill="url(#bgBread)"/>
+            <!-- Griglia tecnica di sfondo -->
+            <g stroke="#00ff41" stroke-opacity="0.12" stroke-width="1">
+              <line x1="0" y1="45" x2="400" y2="45"/>
+              <line x1="0" y1="90" x2="400" y2="90"/>
+              <line x1="0" y1="135" x2="400" y2="135"/>
+              <line x1="0" y1="180" x2="400" y2="180"/>
+              <line x1="80" y1="0" x2="80" y2="220"/>
+              <line x1="160" y1="0" x2="160" y2="220"/>
+              <line x1="240" y1="0" x2="240" y2="220"/>
+              <line x1="320" y1="0" x2="320" y2="220"/>
+            </g>
+            <!-- Piatto / base -->
+            <ellipse cx="200" cy="176" rx="122" ry="14" fill="#00ff41" fill-opacity="0.12" stroke="#00ff41" stroke-opacity="0.45"/>
+            <!-- Pagnotta -->
+            <path d="M98 168 C95 108, 138 78, 200 78 C262 78, 305 108, 302 168 Q200 180 98 168 Z"
+                  fill="url(#loafGrad)" stroke="#ffdf9e" stroke-width="2"/>
+            <!-- Tagli sulla crosta -->
+            <path d="M148 92 Q165 112 155 130" fill="none" stroke="#6b3406" stroke-width="4" stroke-linecap="round"/>
+            <path d="M195 85 Q212 108 202 128" fill="none" stroke="#6b3406" stroke-width="4" stroke-linecap="round"/>
+            <path d="M242 92 Q257 112 248 130" fill="none" stroke="#6b3406" stroke-width="4" stroke-linecap="round"/>
+            <!-- Bollicine CO2 di fermentazione -->
+            <g fill="none" stroke="#00ff41" stroke-width="1.8" filter="url(#glowGreen)">
+              <circle cx="135" cy="58" r="8" fill="#00ff41" fill-opacity="0.15"/>
+              <circle cx="170" cy="36" r="11" fill="#00ff41" fill-opacity="0.15"/>
+              <circle cx="215" cy="48" r="7" fill="#00ff41" fill-opacity="0.15"/>
+              <circle cx="255" cy="34" r="10" fill="#00ff41" fill-opacity="0.15"/>
+              <circle cx="282" cy="64" r="6" fill="#00ff41" fill-opacity="0.15"/>
+            </g>
+            <!-- Etichetta chimica -->
+            <text x="200" y="205" text-anchor="middle" fill="#00ff41" font-family="Consolas, monospace" font-size="12" letter-spacing="1">
+              LIEVITAZIONE • CO2 • TEMPERATURA
+            </text>
+          </svg>
+        </a>
+
+        <div class="app-body">
+          <h2>Fermentazione del Pane</h2>
+          <p>
+            Simulazione interattiva del processo di lievitazione e fermentazione: analizza come variabili quali
+            temperatura, tempo e lievito influenzano la produzione di gas e la crescita dell'impasto.
+          </p>
+          <a class="app-link"
+             href="https://marcopalladino.github.io/didattica-webapp/fermetazione%20pane%20FINALE.html">
+            Avvia Applicazione &rarr;
+          </a>
+          <div class="app-url-hint">fermetazione pane FINALE.html</div>
+        </div>
+      </article>
+
+      <!-- APP 2: Curva di Riscaldamento -->
+      <article class="app-card">
+        <a class="app-thumb"
+           href="https://marcopalladino.github.io/didattica-webapp/marcopalladino_riscaldamento.html"
+           aria-label="Apri app Curva di Riscaldamento">
+          <span class="app-number">APP 02</span>
+          <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustrazione Curva di Riscaldamento">
+            <defs>
+              <linearGradient id="bgHeat" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#051709"/>
+                <stop offset="100%" stop-color="#091f24"/>
+              </linearGradient>
+              <linearGradient id="curveGrad" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stop-color="#38e8ff"/>
+                <stop offset="45%" stop-color="#00ff41"/>
+                <stop offset="75%" stop-color="#ffbe55"/>
+                <stop offset="100%" stop-color="#ff5e5e"/>
+              </linearGradient>
+              <filter id="glowCurve">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <rect width="400" height="220" fill="url(#bgHeat)"/>
+            <!-- Griglia grafico -->
+            <g stroke="#00ff41" stroke-opacity="0.14" stroke-width="1">
+              <line x1="55" y1="45" x2="365" y2="45"/>
+              <line x1="55" y1="85" x2="365" y2="85"/>
+              <line x1="55" y1="125" x2="365" y2="125"/>
+              <line x1="55" y1="165" x2="365" y2="165"/>
+              <line x1="115" y1="25" x2="115" y2="178"/>
+              <line x1="175" y1="25" x2="175" y2="178"/>
+              <line x1="235" y1="25" x2="235" y2="178"/>
+              <line x1="295" y1="25" x2="295" y2="178"/>
+              <line x1="355" y1="25" x2="355" y2="178"/>
+            </g>
+            <!-- Assi cartesiani -->
+            <line x1="55" y1="178" x2="370" y2="178" stroke="#98b8a0" stroke-width="2"/>
+            <line x1="55" y1="178" x2="55" y2="24" stroke="#98b8a0" stroke-width="2"/>
+            <text x="38" y="34" fill="#98b8a0" font-family="Consolas, monospace" font-size="11">T°</text>
+            <text x="360" y="193" fill="#98b8a0" font-family="Consolas, monospace" font-size="11">t</text>
+
+            <!-- Curva di riscaldamento con soste termiche -->
+            <polyline points="60,168 110,132 175,132 235,76 305,76 355,36"
+                      fill="none" stroke="url(#curveGrad)" stroke-width="4.5"
+                      stroke-linecap="round" stroke-linejoin="round" filter="url(#glowCurve)"/>
+
+            <!-- Punti salienti sui passaggi di stato -->
+            <circle cx="110" cy="132" r="4.5" fill="#38e8ff"/>
+            <circle cx="175" cy="132" r="4.5" fill="#00ff41"/>
+            <circle cx="235" cy="76" r="4.5" fill="#ffbe55"/>
+            <circle cx="305" cy="76" r="4.5" fill="#ff5e5e"/>
+
+            <!-- Etichette soste termiche -->
+            <text x="142" y="123" text-anchor="middle" fill="#a7ffbe" font-family="Consolas, monospace" font-size="10">Fusione</text>
+            <text x="270" y="67" text-anchor="middle" fill="#ffd699" font-family="Consolas, monospace" font-size="10">Ebollizione</text>
+
+            <text x="200" y="205" text-anchor="middle" fill="#00ff41" font-family="Consolas, monospace" font-size="12" letter-spacing="1">
+              PASSAGGI DI STATO • CALORE LATENTE
+            </text>
+          </svg>
+        </a>
+
+        <div class="app-body">
+          <h2>Curva di Riscaldamento</h2>
+          <p>
+            Esplora il grafico temperatura-tempo durante il riscaldamento di una sostanza: osserva le fasi solido,
+            liquido e aeriforme e comprendi il significato fisico delle soste termiche.
+          </p>
+          <a class="app-link"
+             href="https://marcopalladino.github.io/didattica-webapp/marcopalladino_riscaldamento.html">
+            Avvia Applicazione &rarr;
+          </a>
+          <div class="app-url-hint">marcopalladino_riscaldamento.html</div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      Repository GitHub Pages:
+      <a href="https://marcopalladino.github.io/didattica-webapp/">
+        https://marcopalladino.github.io/didattica-webapp/
+      </a>
+    </div>
+    <button id="toggle-matrix" class="toggle-btn" type="button">Pausa sfondo Matrix</button>
+  </footer>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById('matrix-canvas');
+      const ctx = canvas.getContext('2d');
+      const toggleBtn = document.getElementById('toggle-matrix');
+
+      const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF{}[]<>/\\';
+      const fontSize = 16;
+      let columns = 0;
+      let drops = [];
+      let isRunning = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let animationId = null;
+      let lastTime = 0;
+      const frameInterval = 45; // ms tra frame per effetto fluido e leggero
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array.from({ length: columns }, () => Math.floor(Math.random() * -40));
+      }
+
+      function drawMatrix(timestamp) {
+        if (!isRunning) return;
+
+        if (timestamp - lastTime >= frameInterval) {
+          lastTime = timestamp;
+
+          ctx.fillStyle = 'rgba(3, 10, 4, 0.08)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.font = fontSize + 'px Consolas, "Courier New", monospace';
+
+          for (let i = 0; i < drops.length; i++) {
+            const text = chars.charAt(Math.floor(Math.random() * chars.length));
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+
+            // Carattere di testa più luminoso
+            ctx.fillStyle = Math.random() > 0.92 ? '#b8ffc8' : '#00ff41';
+            ctx.fillText(text, x, y);
+
+            if (y > canvas.height && Math.random() > 0.975) {
+              drops[i] = 0;
+            }
+            drops[i]++;
+          }
+        }
+        animationId = requestAnimationFrame(drawMatrix);
+      }
+
+      function updateButton() {
+        toggleBtn.textContent = isRunning ? 'Pausa sfondo Matrix' : 'Riprendi sfondo Matrix';
+      }
+
+      toggleBtn.addEventListener('click', function () {
+        isRunning = !isRunning;
+        updateButton();
+        if (isRunning) {
+          animationId = requestAnimationFrame(drawMatrix);
+        } else if (animationId) {
+          cancelAnimationFrame(animationId);
+        }
+      });
+
+      window.addEventListener('resize', resizeCanvas);
+
+      resizeCanvas();
+      updateButton();
+      if (isRunning) {
+        animationId = requestAnimationFrame(drawMatrix);
+      }
+    })();
+  </script>
+</body>
+</html>
